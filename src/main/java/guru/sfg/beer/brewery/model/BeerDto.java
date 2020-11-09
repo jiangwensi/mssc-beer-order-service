@@ -1,4 +1,4 @@
-package guru.sfg.beer.order.service.web.model;
+package guru.sfg.beer.brewery.model;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
@@ -29,7 +29,7 @@ public class BeerDto implements Serializable {
     private OffsetDateTime createdDate;
     private OffsetDateTime lastModifiedDate;
     private String beerName;
-    private BeerStyleEnum beerStyle;
+    private String beerStyle;
     private String upc;
     private BigDecimal price;
     private Integer quantityOnHand;
