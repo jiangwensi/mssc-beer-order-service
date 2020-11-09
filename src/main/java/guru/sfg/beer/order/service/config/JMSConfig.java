@@ -11,6 +11,8 @@ import org.springframework.jms.support.converter.MessageType;
  */
 @Configuration
 public class JMSConfig {
+    public static final String VALIDATE_ORDER_QUEUE = "validate-error" ;
+
     @Bean
     public MessageConverter messageConverter () {
         MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
