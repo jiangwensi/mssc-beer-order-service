@@ -34,7 +34,7 @@ public class BeerOrderStateMachineConfig extends StateMachineConfigurerAdapter<B
         transitions
                 .withExternal()
                 .source(BeerOrderStatusEnum.NEW)
-                .target(BeerOrderStatusEnum.NEW)
+                .target(BeerOrderStatusEnum.VALIDATION_PENDING)
                 .event(BeerOrderEventEnum.VALIDATE_ORDER)
                 //todo ad validation action here
 
