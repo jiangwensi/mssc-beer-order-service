@@ -1,5 +1,6 @@
 package guru.sfg.beer.order.service.sm.actions;
 
+import guru.sfg.beer.brewery.model.events.AllocateOrderRequest;
 import guru.sfg.beer.order.service.config.JMSConfig;
 import guru.sfg.beer.order.service.domain.BeerOrder;
 import guru.sfg.beer.order.service.domain.BeerOrderEventEnum;
@@ -34,7 +35,8 @@ public class AllocateOrderAction implements Action<BeerOrderStatusEnum, BeerOrde
         UUID beerOrderId = UUID.fromString((String)context.getMessageHeader(BeerOrderManagerImpl.ORDER_ID_HEADER));
         BeerOrder beerOrder = beerOrderRepository.findOneById(beerOrderId);
 
-        jmsTemplate.convertAndSend(JMSConfig.ALLOCATE_ORDER_QUEUE, beerOrderMapper.beerOrderToDto(beerOrder));
+        jmsTemplate.convertAndSend(JMSConfig.ALLOCATE_ORDER_QUEUE,
+                AllocateOrderRequest.builder().beerOrderDto(beerOrderMapper.beerOrderToDto(beerOrder)).build());
         log.debug("Send allocation request for order id : "+beerOrderId);
     }
 }
