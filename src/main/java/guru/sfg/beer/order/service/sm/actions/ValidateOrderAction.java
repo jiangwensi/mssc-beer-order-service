@@ -1,4 +1,4 @@
-package guru.sfg.beer.order.service.actions;
+package guru.sfg.beer.order.service.sm.actions;
 
 import guru.sfg.beer.brewery.model.events.ValidateOrderRequest;
 import guru.sfg.beer.order.service.config.JMSConfig;

@@ -23,6 +23,6 @@ public class ValidationResultListener {
     public void listen(ValidateOrderResult result){
         UUID id = result.getOrderId();
         log.debug("Validation result for order id: "+id);
-        beerOrderManager.validateBeerOrder(id,result.isValid());
+        beerOrderManager.processValidationResult(id,result.isValid());
     }
 }

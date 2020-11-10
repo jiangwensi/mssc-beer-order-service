@@ -8,5 +8,5 @@ import java.util.UUID;
 public interface BeerOrderManager {
     BeerOrder newBeerOrder(BeerOrder beerOrder);
 
-    void validateBeerOrder(UUID beerOrderId, Boolean isValid);
+    void processValidationResult(UUID beerOrderId, Boolean isValid);
 }

@@ -1,6 +1,5 @@
 package guru.sfg.beer.order.service.services;
 
-import guru.sfg.beer.brewery.model.events.ValidateOrderResult;
 import guru.sfg.beer.order.service.domain.BeerOrder;
 import guru.sfg.beer.order.service.domain.BeerOrderEventEnum;
 import guru.sfg.beer.order.service.domain.BeerOrderStatusEnum;
@@ -43,10 +42,13 @@ public class BeerOrderManagerImpl implements BeerOrderManager {
     }
 
     @Override
-    public void validateBeerOrder(UUID beerOrderId, Boolean isValid) {
+    public void processValidationResult(UUID beerOrderId, Boolean isValid) {
         BeerOrder beerOrder = beerOrderRepository.getOne(beerOrderId);
+
         if(isValid){
             sendBeerOrderEvent(beerOrder,BeerOrderEventEnum.VALIDATION_PASSED);
+            BeerOrder validatedOrder = beerOrderRepository.findOneById(beerOrderId);
+            sendBeerOrderEvent(validatedOrder, BeerOrderEventEnum.ALLOCATE_ORDER);
         } else {
             sendBeerOrderEvent(beerOrder,BeerOrderEventEnum.VALIDATION_FAILED);
         }
