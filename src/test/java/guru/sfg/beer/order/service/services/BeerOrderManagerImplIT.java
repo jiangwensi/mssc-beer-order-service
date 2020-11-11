@@ -118,6 +118,18 @@ public class BeerOrderManagerImplIT {
     }
 
     @Test
+    void testFailedValidation() {
+        beerOrder.setCustomerRef("fail-validation");
+        BeerOrder savedBeerOrder = beerOrderManager.newBeerOrder(beerOrder);
+        Awaitility.setDefaultTimeout(10,TimeUnit.SECONDS);
+        await().untilAsserted(() -> {
+            assertEquals(BeerOrderStatusEnum.VALIDATION_EXCEPTION,
+                    beerOrderRepository.findById(beerOrder.getId()).get().getOrderStatus()
+            );
+        });
+    }
+
+    @Test
     void testNewToPickUp() {
 
         BeerOrder savedBeerOrder = beerOrderManager.newBeerOrder(beerOrder);
