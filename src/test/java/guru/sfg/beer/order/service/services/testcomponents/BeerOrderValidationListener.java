@@ -10,7 +10,7 @@ import org.springframework.jms.core.JmsTemplate;
 import org.springframework.messaging.Message;
 import org.springframework.stereotype.Component;
 
-import java.security.MessageDigestSpi;
+import static guru.sfg.beer.order.service.services.BeerOrderManagerImplIT.VALIDATION_FAILED;
 
 /**
  * Created by Jiang Wensi on 10/11/2020
@@ -26,7 +26,7 @@ public class BeerOrderValidationListener {
         ValidateOrderRequest request = (ValidateOrderRequest)msg.getPayload();
 
         if(request.getBeerOrderDto().getCustomerRef()!=null && request.getBeerOrderDto().getCustomerRef().equals(
-                "fail-validation")){
+                VALIDATION_FAILED)){
             isValid=false;
         }
 

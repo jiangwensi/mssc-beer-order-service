@@ -43,6 +43,10 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 public class BeerOrderManagerImplIT {
 
+    public static final String VALIDATION_FAILED = "validation-failed";
+    public final static String ALLOCATION_PENDING_INVENTORY = "allocation-pending-inventory";
+    public final static String ALLOCATION_ERROR = "allocation-error";
+
     @Autowired
     BeerOrderManager beerOrderManager;
 
@@ -119,8 +123,8 @@ public class BeerOrderManagerImplIT {
 
     @Test
     void testFailedValidation() {
-        beerOrder.setCustomerRef("fail-validation");
-        BeerOrder savedBeerOrder = beerOrderManager.newBeerOrder(beerOrder);
+        beerOrder.setCustomerRef(VALIDATION_FAILED);
+        beerOrderManager.newBeerOrder(beerOrder);
         Awaitility.setDefaultTimeout(10,TimeUnit.SECONDS);
         await().untilAsserted(() -> {
             assertEquals(BeerOrderStatusEnum.VALIDATION_EXCEPTION,
@@ -128,6 +132,29 @@ public class BeerOrderManagerImplIT {
             );
         });
     }
+
+    @Test
+    void testAllocationFailure() {
+        beerOrder.setCustomerRef(ALLOCATION_ERROR);
+        beerOrderManager.newBeerOrder(beerOrder);
+        await().untilAsserted(() -> {
+            assertEquals(BeerOrderStatusEnum.ALLOCATION_EXCEPTION,
+                    beerOrderRepository.findById(beerOrder.getId()).get().getOrderStatus()
+            );
+        });
+    }
+
+    @Test
+    void testPartialAllocation() {
+        beerOrder.setCustomerRef(ALLOCATION_PENDING_INVENTORY);
+        beerOrderManager.newBeerOrder(beerOrder);
+        await().untilAsserted(() -> {
+            assertEquals(BeerOrderStatusEnum.PENDING_INVENTORY,
+                    beerOrderRepository.findById(beerOrder.getId()).get().getOrderStatus()
+            );
+        });
+    }
+
 
     @Test
     void testNewToPickUp() {
