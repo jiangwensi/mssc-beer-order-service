@@ -6,6 +6,7 @@ import com.github.jenspiegsa.wiremockextension.WireMockExtension;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import guru.sfg.beer.brewery.model.BeerDto;
 import guru.sfg.beer.brewery.model.events.AllocationFailureEvent;
+import guru.sfg.beer.brewery.model.events.DeallocateOrderRequest;
 import guru.sfg.beer.order.service.config.JMSConfig;
 import guru.sfg.beer.order.service.domain.BeerOrder;
 import guru.sfg.beer.order.service.domain.BeerOrderLine;
@@ -15,7 +16,6 @@ import guru.sfg.beer.order.service.repositories.BeerOrderRepository;
 import guru.sfg.beer.order.service.repositories.CustomerRepository;
 import guru.sfg.beer.order.service.services.beer.BeerServiceImpl;
 import guru.sfg.beer.order.service.web.mappers.BeerOrderMapper;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,7 +29,6 @@ import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 import static com.github.jenspiegsa.wiremockextension.ManagedWireMockServer.with;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
@@ -46,9 +45,11 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 public class BeerOrderManagerImplIT {
 
-    public static final String VALIDATION_FAILED = "validation-failed";
-    public final static String ALLOCATION_PENDING_INVENTORY = "allocation-pending-inventory";
-    public final static String ALLOCATION_ERROR = "allocation-error";
+    public static final String CUSTOMER_REF_VALIDATION_FAILED = "customer-ref-validation-failed";
+    public static final String CUSTOMER_REF_VALIDATION_PENDING = "customer-ref-validation-pending";
+    public final static String CUSTOMER_REF_ALLOCATION_PENDING_INVENTORY = "customer-ref-allocation-pending-inventory";
+    public final static String CUSTOMER_REF_ALLOCATION_ERROR = "customer-ref-allocation-error";
+    public final static String CUSTOMER_REF_ALLOCATION_PENDING = "customer-ref-allocation-pending";
 
     @Autowired
     BeerOrderManager beerOrderManager;
@@ -111,9 +112,7 @@ public class BeerOrderManagerImplIT {
 
         BeerOrder savedBeerOrder = beerOrderManager.newBeerOrder(beerOrder);
 
-        await().atMost(10, TimeUnit.SECONDS)
-                .pollInterval(1, TimeUnit.SECONDS)
-                .until(() -> beerOrderRepository.findById(beerOrder.getId()).get().getOrderStatus().equals(BeerOrderStatusEnum.ALLOCATED));
+        beerOrderWaitUntil(BeerOrderStatusEnum.ALLOCATED);
 
         await().untilAsserted(() -> {
             BeerOrder foundOrder = beerOrderRepository.findById(beerOrder.getId()).get();
@@ -129,40 +128,28 @@ public class BeerOrderManagerImplIT {
 
     @Test
     void testFailedValidation() {
-        beerOrder.setCustomerRef(VALIDATION_FAILED);
+        beerOrder.setCustomerRef(CUSTOMER_REF_VALIDATION_FAILED);
         beerOrderManager.newBeerOrder(beerOrder);
-        Awaitility.setDefaultTimeout(10, TimeUnit.SECONDS);
-        await().untilAsserted(() -> {
-            assertEquals(BeerOrderStatusEnum.VALIDATION_EXCEPTION,
-                    beerOrderRepository.findById(beerOrder.getId()).get().getOrderStatus()
-            );
-        });
+        beerOrderWaitUntil(BeerOrderStatusEnum.VALIDATION_EXCEPTION);
     }
 
     @Test
     void testAllocationFailure() {
-        beerOrder.setCustomerRef(ALLOCATION_ERROR);
+        beerOrder.setCustomerRef(CUSTOMER_REF_ALLOCATION_ERROR);
         beerOrderManager.newBeerOrder(beerOrder);
-        await().untilAsserted(() -> {
-            assertEquals(BeerOrderStatusEnum.ALLOCATION_EXCEPTION,
-                    beerOrderRepository.findById(beerOrder.getId()).get().getOrderStatus()
-            );
-        });
+
+        beerOrderWaitUntil(BeerOrderStatusEnum.ALLOCATION_EXCEPTION);
 
         AllocationFailureEvent allocationFailureEvent = (AllocationFailureEvent)
                 jmsTemplate.receiveAndConvert(JMSConfig.ALLOCATE_FAILURE_QUEUE);
-        assertEquals(beerOrder.getId().toString(),allocationFailureEvent.getBeerOrderId());
+        assertEquals(beerOrder.getId().toString(), allocationFailureEvent.getBeerOrderId());
     }
 
     @Test
     void testPartialAllocation() {
-        beerOrder.setCustomerRef(ALLOCATION_PENDING_INVENTORY);
+        beerOrder.setCustomerRef(CUSTOMER_REF_ALLOCATION_PENDING_INVENTORY);
         beerOrderManager.newBeerOrder(beerOrder);
-        await().untilAsserted(() -> {
-            assertEquals(BeerOrderStatusEnum.PENDING_INVENTORY,
-                    beerOrderRepository.findById(beerOrder.getId()).get().getOrderStatus()
-            );
-        });
+        beerOrderWaitUntil(BeerOrderStatusEnum.PENDING_INVENTORY);
     }
 
     @Test
@@ -170,25 +157,63 @@ public class BeerOrderManagerImplIT {
 
         BeerOrder savedBeerOrder = beerOrderManager.newBeerOrder(beerOrder);
 
-        Awaitility.setDefaultTimeout(10, TimeUnit.SECONDS);
-        await().untilAsserted(() -> {
-            assertEquals(BeerOrderStatusEnum.ALLOCATED,
-                    beerOrderRepository.findById(beerOrder.getId()).get().getOrderStatus()
-            );
-        });
+        beerOrderWaitUntil(BeerOrderStatusEnum.ALLOCATED);
+
         Optional<BeerOrder> savedBeerOrderOptional = beerOrderRepository.findById(savedBeerOrder.getId());
         assertTrue(savedBeerOrderOptional.isPresent());
 
         beerOrderManager.beerOrderPickedUp(savedBeerOrderOptional.get().getId());
 
-        await().untilAsserted(() -> {
-            assertEquals(BeerOrderStatusEnum.PICKED_UP,
-                    beerOrderRepository.findById(beerOrder.getId()).get().getOrderStatus()
-            );
-        });
+        beerOrderWaitUntil(BeerOrderStatusEnum.PICKED_UP);
         Optional<BeerOrder> pickedBeerOrderOptional = beerOrderRepository.findById(beerOrder.getId());
         assertTrue(pickedBeerOrderOptional.isPresent());
         assertEquals(BeerOrderStatusEnum.PICKED_UP, pickedBeerOrderOptional.get().getOrderStatus());
+    }
+
+    @Test
+    void testValidationPendingToCancel() {
+        beerOrder.setCustomerRef(CUSTOMER_REF_VALIDATION_PENDING);
+        beerOrderManager.newBeerOrder(beerOrder);
+
+        beerOrderWaitUntil(BeerOrderStatusEnum.VALIDATION_PENDING);
+
+        beerOrderManager.cancelBeerOrder(beerOrder.getId());
+        beerOrderWaitUntil(BeerOrderStatusEnum.CANCELED);
+        Optional<BeerOrder> pickedBeerOrderOptional = beerOrderRepository.findById(beerOrder.getId());
+        assertTrue(pickedBeerOrderOptional.isPresent());
+        assertEquals(BeerOrderStatusEnum.CANCELED, pickedBeerOrderOptional.get().getOrderStatus());
+    }
+
+    @Test
+    void testAllocationPendingToCancel() {
+        beerOrder.setCustomerRef(CUSTOMER_REF_ALLOCATION_PENDING);
+        beerOrderManager.newBeerOrder(beerOrder);
+
+        beerOrderWaitUntil(BeerOrderStatusEnum.ALLOCATION_PENDING);
+
+        beerOrderManager.cancelBeerOrder(beerOrder.getId());
+
+        beerOrderWaitUntil(BeerOrderStatusEnum.CANCELED);
+
+        Optional<BeerOrder> pickedBeerOrderOptional = beerOrderRepository.findById(beerOrder.getId());
+        assertTrue(pickedBeerOrderOptional.isPresent());
+        assertEquals(BeerOrderStatusEnum.CANCELED, pickedBeerOrderOptional.get().getOrderStatus());
+
+    }
+
+    @Test
+    void testAllocatedToCancel() {
+        beerOrderManager.newBeerOrder(beerOrder);
+
+        beerOrderWaitUntil(BeerOrderStatusEnum.ALLOCATED);
+
+        beerOrderManager.cancelBeerOrder(beerOrder.getId());
+
+        beerOrderWaitUntil(BeerOrderStatusEnum.CANCELED);
+
+        DeallocateOrderRequest deallocateOrderRequest =
+                (DeallocateOrderRequest)jmsTemplate.receiveAndConvert(JMSConfig.DEALLOCATE_ORDER_QUEUE);
+        assertNotNull(deallocateOrderRequest);
     }
 
     public BeerOrder createBeerOrder() {
@@ -208,5 +233,12 @@ public class BeerOrderManagerImplIT {
         beerOrder.setBeerOrderLines(lines);
 
         return beerOrder;
+    }
+
+    private void beerOrderWaitUntil(BeerOrderStatusEnum status) {
+        await().untilAsserted(() -> {
+            assertEquals(status, beerOrderRepository.findById(beerOrder.getId()).get().getOrderStatus()
+            );
+        });
     }
 }

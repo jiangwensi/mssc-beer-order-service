@@ -10,8 +10,7 @@ import org.springframework.jms.core.JmsTemplate;
 import org.springframework.messaging.Message;
 import org.springframework.stereotype.Service;
 
-import static guru.sfg.beer.order.service.services.BeerOrderManagerImplIT.ALLOCATION_ERROR;
-import static guru.sfg.beer.order.service.services.BeerOrderManagerImplIT.ALLOCATION_PENDING_INVENTORY;
+import static guru.sfg.beer.order.service.services.BeerOrderManagerImplIT.*;
 
 /**
  * Created by Jiang Wensi on 10/11/2020
@@ -26,16 +25,20 @@ public class BeerOrderAllocationListener {
     public void listen(Message message) {
         Boolean pendingInventory = false;
         Boolean allocationError = false;
+        Boolean pendingAllocation = false;
 
         AllocateOrderRequest request = (AllocateOrderRequest) message.getPayload();
         String customerRef = request.getBeerOrderDto().getCustomerRef();
 
         if (customerRef != null) {
-            if (customerRef.equals(ALLOCATION_PENDING_INVENTORY)) {
+            if (customerRef.equals(CUSTOMER_REF_ALLOCATION_PENDING_INVENTORY)) {
                 pendingInventory = true;
             }
-            if (customerRef.equals(ALLOCATION_ERROR)) {
+            if (customerRef.equals(CUSTOMER_REF_ALLOCATION_ERROR)) {
                 allocationError = true;
+            }
+            if (customerRef.equals(CUSTOMER_REF_ALLOCATION_PENDING)) {
+                pendingAllocation = true;
             }
         }
 
@@ -43,12 +46,14 @@ public class BeerOrderAllocationListener {
             beerOrderLineDto.setQuantityAllocated(beerOrderLineDto.getQuantityAllocated());
         });
 
-        jmsTemplate.convertAndSend(
-                JMSConfig.ALLOCATE_ORDER_RESPONSE_QUEUE,
-                AllocateOrderResult.builder()
-                        .beerOrderDto(request.getBeerOrderDto())
-                        .pendingInventory(pendingInventory)
-                        .allocationError(allocationError)
-                        .build());
+        if(!pendingAllocation){
+            jmsTemplate.convertAndSend(
+                    JMSConfig.ALLOCATE_ORDER_RESPONSE_QUEUE,
+                    AllocateOrderResult.builder()
+                            .beerOrderDto(request.getBeerOrderDto())
+                            .pendingInventory(pendingInventory)
+                            .allocationError(allocationError)
+                            .build());
+        }
     }
 }
