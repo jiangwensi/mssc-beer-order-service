@@ -45,6 +45,15 @@ public class BeerOrderManagerImpl implements BeerOrderManager {
         return savedBeerOrder;
     }
 
+
+    @Override
+    public void beerOrderPickedUp(UUID beerOrderId) {
+        Optional<BeerOrder> beerOrderOptional = beerOrderRepository.findById(beerOrderId);
+        beerOrderOptional.ifPresentOrElse((beerOrder)->{
+            sendBeerOrderEvent(beerOrder,BeerOrderEventEnum.PICK_UP_ORDER);
+        },()->log.error("Order Not Found. Id: "+beerOrderId));
+    }
+
     @Transactional
     @Override
     public void processValidationResult(UUID beerOrderId, Boolean isValid) {
