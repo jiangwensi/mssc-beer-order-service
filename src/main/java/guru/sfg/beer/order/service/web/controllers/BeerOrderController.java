@@ -18,15 +18,19 @@
 package guru.sfg.beer.order.service.web.controllers;
 
 import guru.sfg.beer.order.service.services.BeerOrderService;
+import guru.sfg.beer.order.service.services.CustomerService;
 import guru.sfg.brewery.model.BeerOrderDto;
 import guru.sfg.brewery.model.BeerOrderPagedList;
+import guru.sfg.brewery.model.CustomerPagedList;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
-@RequestMapping("/api/v1/customers/{customerId}/")
+@RequiredArgsConstructor
+@RequestMapping("/api/v1/customers/{customerId}/orders")
 @RestController
 public class BeerOrderController {
 
@@ -35,11 +39,8 @@ public class BeerOrderController {
 
     private final BeerOrderService beerOrderService;
 
-    public BeerOrderController(BeerOrderService beerOrderService) {
-        this.beerOrderService = beerOrderService;
-    }
 
-    @GetMapping("orders")
+    @GetMapping
     public BeerOrderPagedList listOrders(@PathVariable("customerId") UUID customerId,
                                          @RequestParam(value = "pageNumber", required = false) Integer pageNumber,
                                          @RequestParam(value = "pageSize", required = false) Integer pageSize){
@@ -55,18 +56,17 @@ public class BeerOrderController {
         return beerOrderService.listOrders(customerId, PageRequest.of(pageNumber, pageSize));
     }
 
-    @PostMapping("orders")
     @ResponseStatus(HttpStatus.CREATED)
     public BeerOrderDto placeOrder(@PathVariable("customerId") UUID customerId, @RequestBody BeerOrderDto beerOrderDto){
         return beerOrderService.placeOrder(customerId, beerOrderDto);
     }
 
-    @GetMapping("orders/{orderId}")
+    @GetMapping("/{orderId}")
     public BeerOrderDto getOrder(@PathVariable("customerId") UUID customerId, @PathVariable("orderId") UUID orderId){
         return beerOrderService.getOrderById(customerId, orderId);
     }
 
-    @PutMapping("/orders/{orderId}/pickup")
+    @PutMapping("/{orderId}/pickup")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void pickupOrder(@PathVariable("customerId") UUID customerId, @PathVariable("orderId") UUID orderId){
         beerOrderService.pickupOrder(customerId, orderId);
