@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.jenspiegsa.wiremockextension.WireMockExtension;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import guru.sfg.beer.brewery.model.BeerDto;
+import guru.sfg.beer.brewery.model.events.AllocationFailureEvent;
+import guru.sfg.beer.order.service.config.JMSConfig;
 import guru.sfg.beer.order.service.domain.BeerOrder;
 import guru.sfg.beer.order.service.domain.BeerOrderLine;
 import guru.sfg.beer.order.service.domain.BeerOrderStatusEnum;
@@ -21,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.jms.core.JmsTemplate;
 
 import java.util.HashSet;
 import java.util.Optional;
@@ -64,6 +67,9 @@ public class BeerOrderManagerImplIT {
 
     @Autowired
     BeerOrderMapper beerOrderMapper;
+
+    @Autowired
+    JmsTemplate jmsTemplate;
 
     Customer testCustomer;
 
@@ -125,7 +131,7 @@ public class BeerOrderManagerImplIT {
     void testFailedValidation() {
         beerOrder.setCustomerRef(VALIDATION_FAILED);
         beerOrderManager.newBeerOrder(beerOrder);
-        Awaitility.setDefaultTimeout(10,TimeUnit.SECONDS);
+        Awaitility.setDefaultTimeout(10, TimeUnit.SECONDS);
         await().untilAsserted(() -> {
             assertEquals(BeerOrderStatusEnum.VALIDATION_EXCEPTION,
                     beerOrderRepository.findById(beerOrder.getId()).get().getOrderStatus()
@@ -142,6 +148,10 @@ public class BeerOrderManagerImplIT {
                     beerOrderRepository.findById(beerOrder.getId()).get().getOrderStatus()
             );
         });
+
+        AllocationFailureEvent allocationFailureEvent = (AllocationFailureEvent)
+                jmsTemplate.receiveAndConvert(JMSConfig.ALLOCATE_FAILURE_QUEUE);
+        assertEquals(beerOrder.getId().toString(),allocationFailureEvent.getBeerOrderId());
     }
 
     @Test
@@ -155,13 +165,12 @@ public class BeerOrderManagerImplIT {
         });
     }
 
-
     @Test
     void testNewToPickUp() {
 
         BeerOrder savedBeerOrder = beerOrderManager.newBeerOrder(beerOrder);
 
-        Awaitility.setDefaultTimeout(10,TimeUnit.SECONDS);
+        Awaitility.setDefaultTimeout(10, TimeUnit.SECONDS);
         await().untilAsserted(() -> {
             assertEquals(BeerOrderStatusEnum.ALLOCATED,
                     beerOrderRepository.findById(beerOrder.getId()).get().getOrderStatus()
