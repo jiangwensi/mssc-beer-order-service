@@ -1,7 +1,7 @@
 package guru.sfg.beer.order.service.services.testcomponents;
 
-import guru.sfg.beer.brewery.model.events.ValidateOrderRequest;
-import guru.sfg.beer.brewery.model.events.ValidateOrderResult;
+import guru.sfg.brewery.model.events.ValidateOrderRequest;
+import guru.sfg.brewery.model.events.ValidateOrderResult;
 import guru.sfg.beer.order.service.config.JMSConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

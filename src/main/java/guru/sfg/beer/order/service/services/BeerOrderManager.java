@@ -1,7 +1,6 @@
 package guru.sfg.beer.order.service.services;
 
-import guru.sfg.beer.brewery.model.BeerOrderDto;
-import guru.sfg.beer.brewery.model.events.ValidateOrderResult;
+import guru.sfg.brewery.model.BeerOrderDto;
 import guru.sfg.beer.order.service.domain.BeerOrder;
 
 import java.util.UUID;

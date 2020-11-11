@@ -1,6 +1,6 @@
 package guru.sfg.beer.order.service.sm.actions;
 
-import guru.sfg.beer.brewery.model.events.AllocateOrderRequest;
+import guru.sfg.brewery.model.events.AllocateOrderRequest;
 import guru.sfg.beer.order.service.config.JMSConfig;
 import guru.sfg.beer.order.service.domain.BeerOrder;
 import guru.sfg.beer.order.service.domain.BeerOrderEventEnum;
